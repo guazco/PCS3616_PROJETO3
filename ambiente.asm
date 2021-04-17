@@ -34,6 +34,7 @@ TABELA 			K 	/4A50 ; JP
         		K 	/4744 ; GD 
         		K 	/5044 ; PD 
         		K 	/4F53 ; OS 
+        		K   /4B20 ; K  ; pseudo instrucao que representa uma constante
 	
 NUM 			K 	/0000 ; 0 
         		K 	/0001 ; 1 
@@ -51,12 +52,11 @@ NUM 			K 	/0000 ; 0
         		K 	/000D ; D 
         		K 	/000E ; E 
         		K 	/000F ; F 
+        		K   /0000 ; 0  ; retorna um opcode '0' para uma constante
 PTAB 			K 	TABELA 
 PNUM 			K 	NUM 
 INITAB 			K 	TABELA 
 ININUM 			K 	NUM 
-;	
-SC 			MNEM2OP ; chama SUB-ROTINA MNEM2OP 
 ; 
 MNEM2OP 		K 	/0000 
 LOOPMN 			LD 	PTAB 
@@ -79,7 +79,6 @@ INSTMN  		K  	/0000
         		LD 	INITAB 
         		MM 	PTAB 
         		RS 	MNEM2OP 
-;
 
 ; -------------------------------------------------------------------
 ; Subrotina: LEITURA
@@ -352,7 +351,6 @@ LROT			K 	/0000
 				SC 	SVMT
 				JP	END
 
-
 ; -------------------------------------------------------------------
 ; Subrotina: SVMT
 ; Salva o rótulo pendente o monte
@@ -386,16 +384,6 @@ SAVMTMM			K	/0000
 ; Faz a correcao dos rotulos pendentes na pilha
 ;
 ; -------------------------------------------------------------------
-STACKVAL		K	/0FFA
-STACKVMAX		K   /0000
-STACKRMAX       K   /0000
-MOUNTBEG		K	/0A00
-OITO 			K   /0008
-STP_AUX			K	STACKVAL	; ponteiro auxiliar que percorre a pilha para encontrar rotulos pendentes
-ROT_AUX			K	/0FFE		; ponteiro auxiliar que percorre os rotulos da pilha para corrigir pendencia
-MTP_AUX			K	MOUNTBEG	; ponteiro auxiliar que percorre o monte para ler os rotulos pendentes
-LABEL			K	/0000		; rotulo lido do monte
-ADDR			K	/0000
 
 RESROT			JP  /0000
 				LD  STP
@@ -454,6 +442,55 @@ WRROT			K	/0000
 				JP  VALLOOP
 FIMRR			RS	RESROT
 
+; -------------------------------------------------------------------
+; Subrotina: WRITE 
+; Faz a escrita do codigo compilado em mvn
+;
+; -------------------------------------------------------------------
+
+
+INSTRUC         K	/0000
+OPC 			K	/0000
+
+WRITE			JP	/0000
+				LD  BOP			; reseta o ponteiro auxiliar da pilha
+				MM  STP_AUX
+
+MONTA			LD 	STP_AUX
+				SB  STP 		; checa se chegou ao fim da pilha
+				JZ  FIMWR
+				LD  STP_AUX
+				SB  DOIS
+				MM  STP_AUX
+				AD  LOAD
+				MM  GETINST
+GETINST			K	/0000
+				MM  OPC
+				LD 	STP_AUX
+				SB  DOIS
+				MM  STP_AUX
+				AD  LOAD
+				MM  GETVAL
+GETVAL			K	/0000
+				AD  OPC
+				MM  INSTUC
+				LD 	STP_AUX
+				SB  DOIS
+				MM  STP_AUX
+				AD  MOVEM
+				MM  WRINST
+				LD  INSTRUC
+WRINST			K 	/0000
+				LD  STP_AUX
+				SB  DOIS
+				MM  STP_AUX
+				JP  MONTA
+FIMWR			RS  WRITE
+
+
+
+
+
 ;=====================================================================
 
 @	/0300
@@ -473,6 +510,11 @@ FIMRR			RS	RESROT
 STP		        K	/0FFE   ; stack pointer
 MTP		        K	/09FE   ; monte pointer
 
+STP_AUX			K	STACKVAL	; ponteiro auxiliar que percorre a pilha para encontrar rotulos pendentes
+ROT_AUX			K	/0FFE		; ponteiro auxiliar que percorre os rotulos da pilha para corrigir pendencia
+MTP_AUX			K	MOUNTBEG	; ponteiro auxiliar que percorre o monte para ler os rotulos pendentes
+
+
 ; ** EXCECOES **
 ERROVAL	        LD	ERVAL   ; erro no valor
 		        OS	/0EE
@@ -489,7 +531,9 @@ EV3		        HM	EV3
 ; ** CONSTANTES **
 UM 		        K 	/0001 ; constante 1
 DOIS		    K	/0002 ; constante 2
+QUATRO			K	/0004 ; constante 4
 SEIS		    K	/0006 ; constante 6
+OITO 			K   /0008 ; constante 8
 ASCCTE	        K	/0031 ; constante corrige letras
 ASTRIX 			K   /2A2A
 EOF		        K	/2320 ; # + ESPACO
@@ -504,6 +548,9 @@ ERVAL		    K	/0001 ; A SETAR
 ERROT			K	/0002 ; A SETAR
 EREOF		    K	/0003 ; A SETAR
 
+STACKVAL		K	/0FFA 		; primeiro "valor" da pilha
+MOUNTBEG		K	/0A00 		; inicio do monte
+
 ; ** VARIAVEIS **
 IC		        K	/0000   ; instruction counter
 VAR		        K	/0000   ; variavel da conversao de ascii para hex
@@ -511,6 +558,10 @@ DATA		    K	/0000
 OPER		    K	/0000	
 OPCODE          K   /000E 
 MNEM            K   /0000 
+LABEL			K	/0000	; rotulo lido do monte
+ADDR			K	/0000	; endereco associado ao rotulo pendente
+STACKVMAX		K   /0000	; armazena o valor associado ao ultimo rotulo da pilha
+STACKRMAX       K   /0000	; armazena o endereco do ultimo rotulo da pilha
 
 ; ** INSTRUCOES **
 
